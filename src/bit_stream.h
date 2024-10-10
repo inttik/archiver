@@ -2,6 +2,7 @@
 
 #include <bitset>
 #include <limits>
+#include <cstdint>
 
 #ifndef CHAR_BIT
 #define CHAR_BIT 8

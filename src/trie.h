@@ -79,7 +79,7 @@ private:
     TriePtr right_;
 };
 
-template <typename Key>
+template <typename Key> 
 class Trie {
 public:
     using TriePtr = std::unique_ptr<RawTrie<Key>>;

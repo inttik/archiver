@@ -1,8 +1,9 @@
 #include "encoder.h"
 
+#include <algorithm>
 #include <tuple>
 
-#include "priority_queue.h"
+#include "heap.h"
 #include "trie.h"
 
 Encoder::Encoder(Encoder::OutputStream&& archive) : archive_(archive) {
@@ -31,7 +32,7 @@ void Encoder::EncodeFile(Encoder::InputStream&& file, bool is_last) {
     }
 
     // trie building
-    PriorityQueue<QueueKey> priority_queue;
+    MinHeap<QueueKey> priority_queue;
     for (size_t i = 0; i < alphabet_size; ++i) {
         if (frequencies[i] == 0) {
             continue;
@@ -41,17 +42,18 @@ void Encoder::EncodeFile(Encoder::InputStream&& file, bool is_last) {
     }
 
     while (priority_queue.Size() > 1) {
-        auto [l, r] = priority_queue.ExtractFirstTwo();
+        auto l = priority_queue.Extract();
+        auto r = priority_queue.Extract();
         QueueKey current(l.first + r.first, Trie<size_t>(std::move(l.second), std::move(r.second)));
         priority_queue.Insert(std::move(current));
     }
 
-    auto trie = priority_queue.ExtractByIndex(0).second;
+    auto trie = priority_queue.Extract().second;
 
     // code generation
     std::vector<Code> codes;
     trie.GenerateCodes(codes);
-    sort(codes.begin(), codes.end(), [](const Code& a, const Code& b) {
+    std::sort(codes.begin(), codes.end(), [](const Code& a, const Code& b) {
         return std::make_tuple(a.second.size(), a.first) < std::make_tuple(b.second.size(), b.first);
     });
 
