@@ -3,6 +3,8 @@
 
 #include "decoder.h"
 
+#include <iostream>
+
 void IsSame(const std::string& file_name, const std::string& directory_name) {
     std::string answer_path = "../../src/tests/unzipped/" + file_name;
     std::string correct_path = "../../src/tests/data/" + directory_name + "/" + file_name;
@@ -35,12 +37,14 @@ TEST_CASE("a") {
     std::ifstream in("../../src/tests/data/" + arc_name + ".arc", std::ios_base::binary);
 
     REQUIRE(in.is_open());
-
+    INFO("starting decode");
     Decoder decoder(BitReader(in), "../../src/tests/unzipped/");
+
     decoder.Decode();
     in.close();
 
     IsSame("a", arc_name);
+    SUCCEED("A decoded");
 }
 TEST_CASE("empty") {
     std::string arc_name = "empty";

@@ -3,7 +3,6 @@
 #include <stdexcept>
 
 #include "bit_reader.h"
-#include "bit_writer.h"
 
 class Decoder {
 public:

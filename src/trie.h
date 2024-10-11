@@ -7,7 +7,7 @@
 template <typename Key>
 class RawTrie {
 public:
-    using TriePtr = std::unique_ptr<RawTrie>;
+    using TriePtr = std::shared_ptr<RawTrie>;
 
     RawTrie() : value_(), left_(nullptr), right_(nullptr) {
     }
@@ -27,20 +27,20 @@ public:
     }
 
     TriePtr GetLeft() {
-        return std::move(left_);
+        return left_;
     }
     TriePtr GetRight() {
-        return std::move(right_);
+        return right_;
     }
     Key GetValue() const {
         return value_;
     }
 
     void SetLeft(TriePtr&& left) {
-        left_.reset(left.release());
+        left_ = left;
     }
     void SetRight(TriePtr&& right) {
-        right_.reset(right.release());
+        right_ = right;
     }
     void SetValue(const Key& value) {
         value_ = value;
@@ -79,10 +79,18 @@ private:
     TriePtr right_;
 };
 
+template <typename Key>
+std::vector<std::pair<Key, std::vector<bool>>> ToCodes(const RawTrie<Key>& trie) {
+    std::vector<std::pair<Key, std::vector<bool>>> codes;
+    std::vector<bool> current_code;
+    RawTrie<Key>::GenerateCodes(trie, current_code, codes);
+    return codes;
+}
+
 template <typename Key> 
 class Trie {
 public:
-    using TriePtr = std::unique_ptr<RawTrie<Key>>;
+    using TriePtr = RawTrie<Key>::TriePtr;
 
     Trie() : current_(new RawTrie<Key>) {
     }
@@ -106,7 +114,7 @@ public:
     }
 
     TriePtr GetRaw() & {
-        return std::move(current_);
+        return current_;
     }
     void SetRaw(TriePtr&& current) {
         current_.reset(current.release());

@@ -1,74 +1,53 @@
 #include "decoder.h"
 
-#include <stack>
 #include <fstream>
 #include <functional>
 #include <vector>
 
 #include "trie.h"
 
+#include <iostream>
+
 using Int = BitReader::ResultType;
 using TriePtr = RawTrie<Int>::TriePtr;
 
-static Trie<Int> AddCode(Trie<Int>&& target, Int key, const std::vector<bool>& code) {
-    std::stack<TriePtr> currents;
+namespace {
+
+void AddCode(Trie<Int>& target, Int key, const std::vector<bool>& code) {
     auto current = target.GetRaw();
+    if (current == nullptr) {
+        current.reset(new RawTrie<Int>());
+    }
     for (auto e : code) {
         auto next = (e == 0 ? current->GetLeft() : current->GetRight());
-        currents.push(std::move(current));
         if (next == nullptr) {
-            next.reset(new RawTrie<Int>());
+            if (e == 0) {
+                current->SetLeft(std::make_shared<RawTrie<Int>>());
+                next = current->GetLeft();
+            }
+            else {
+                current->SetRight(std::make_shared<RawTrie<Int>>());
+                next = current->GetRight();
+            }
         }
-        current = std::move(next);
+        current = next;
     }
     current->SetValue(key);
-
-    for (size_t i = code.size() - 1;; --i) {
-        if (code[i] == 0) {
-            currents.top()->SetLeft(std::move(current));
-        } else {
-            currents.top()->SetRight(std::move(current));
-        }
-        current = std::move(currents.top());
-        currents.pop();
-
-        if (i == 0) {
-            break;
-        }
-    }
-    target.SetRaw(std::move(current));
-    return std::move(target);
 }
-std::pair<uint32_t, Trie<Int>> GetChar(Trie<Int>&& target, Decoder& decoder,
-                                       std::function<uint32_t(Decoder&, size_t)> read) {
-    std::stack<TriePtr> currents;
-    std::stack<bool> history;
+
+uint32_t GetChar(Trie<Int>& target, Decoder& decoder, std::function<uint32_t(Decoder&, size_t)> read) {
     auto current = target.GetRaw();
 
     while (!current->IsTerminal()) {
         uint32_t now = read(decoder, 1);
+        assert(current != nullptr);
         auto next = (now == 0 ? current->GetLeft() : current->GetRight());
-        currents.push(std::move(current));
-        history.push(now);
-        current = std::move(next);
+        current = next;
     }
-
-    uint32_t answer = current->GetValue();
-
-    while (!currents.empty()) {
-        if (history.top() == 0) {
-            currents.top()->SetLeft(std::move(current));
-        } else {
-            currents.top()->SetRight(std::move(current));
-        }
-        current = std::move(currents.top());
-        currents.pop();
-        history.pop();
-    }
-
-    target.SetRaw(std::move(current));
-    return std::pair<uint32_t, Trie<Int>>(answer, std::move(target));
+    return current->GetValue();
 }
+
+}  // namespace
 
 Decoder::IncorrectFile::IncorrectFile(const char* message) : std::runtime_error(message) {
 }
@@ -120,7 +99,7 @@ void Decoder::Decode() {
 
         Trie<Int> trie_codes;
         for (const auto& [key, code] : codes) {
-            trie_codes = AddCode(std::move(trie_codes), key, code);
+            AddCode(trie_codes, key, code);
         }
 
         bool is_last = false;
@@ -130,9 +109,7 @@ void Decoder::Decode() {
         std::ofstream current_file;
 
         while (true) {
-            auto [char_code, trie] = GetChar(std::move(trie_codes), *this, std::mem_fn(&Decoder::ReadSome));
-            trie_codes = std::move(trie);
-
+            auto char_code = GetChar(trie_codes, *this, std::mem_fn(&Decoder::ReadSome));
             if (char_code == ARCHIVE_END) {
                 is_last = true;
                 break;
